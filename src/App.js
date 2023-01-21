@@ -15,6 +15,9 @@ import rightButton from "./Assets/Images/right.png";
 import upButton from "./Assets/Images/up.png";
 import wasd from "./Assets/Images/wasd.png";
 import UpRightDownLeft from "./Assets/Images/UpRightDownLeft.png";
+import graphNameBg from "./Assets/Images/graph_name_bg.png";
+import graphLegendBg from "./Assets/Images/graph_legend_bg.png";
+import graph_group_name_active_bg from "./Assets/Images/graph_group_name_active_bg.png";
 
 import {
   Chart as ChartJS,
@@ -40,88 +43,219 @@ ChartJS.register(
 );
 
 function App() {
-  // CHART STATES AND FUNCTIONS
+  const url = `http://127.0.0.1:5001/`; // URL for FLASK Server
 
-  // CONTROLLER
-  const url = `http://127.0.0.1:5001/`;
-  const [interest, setInterest] = useState(null);
+  // STATES
   const [response, setResponse] = useState(null);
   const [time, setTime] = useState(new Date());
-  const [throttle, setThrottle] = useState("-1");
-  const [roll, setRoll] = useState("-1");
-  const [pitch, setPitch] = useState("-1");
-  const [yaw, setYaw] = useState("-1");
+  const [throttle, setThrottle] = useState(-1); // Instantaneous Throttle of the drone
+  const [roll, setRoll] = useState(-1); // Instantaneous Roll of the drone
+  const [pitch, setPitch] = useState(-1); // Instantaneous Pitch of the drone
+  const [yaw, setYaw] = useState(-1); // Instantaneous Yaw of the drone
+  const [graphToggle, setGraphToggle] = useState(true);
 
+  // data1 => (xData1, yData1, zData1) = (YAW, ROLL, PITCH)
+
+  const [xData1, setXData1] = useState([]);
+  const [yData1, setYData1] = useState([]);
+  const [zData1, setZData1] = useState([]);
+
+  // data2 => (xData2) = (THROTTLE)
+  const [xData2, setXData2] = useState([]);
+
+  // labelData => seconds passed
+  const [labelData1, setLabelData1] = useState([0, 1, 2, 3, 4, 5, 6]);
+  const [labelData2, setLabelData2] = useState([0, 1, 2, 3, 4, 5, 6]);
+
+  // API to control drone
   const callYourAPI = (e) => {
     let requestURL = url + "controller/" + e;
 
+    if (e == "disArm") setThrottle((prev) => 0); // Setting throttle to 0 at disArm
     axios.get(requestURL).then((res) => {
       setResponse(res);
     });
   };
 
+  // API to get drone parameters i.e Throttle, Roll, Pitch, Yaw
   const droneParameterAPI = () => {
     let requestURL = url + "drone_param";
 
     axios.get(requestURL).then((res) => {
-      console.log(res);
       let resData = res.data;
       setThrottle((prev) => resData["rcThrottle"]);
       setRoll((prev) => resData["Roll"]);
       setPitch((prev) => resData["Pitch"]);
       setYaw((prev) => resData["Yaw"]);
-      // setResponse(res);
     });
   };
 
-  // TEST
   const options = {
-    responsive: true,
     plugins: {
       legend: {
-        position: "top",
+        display: false,
       },
-      title: {
-        display: true,
-        text: "Chart.js Line Chart",
+    },
+    scales: {
+      x: {
+        ticks: {
+          display: false,
+        },
+        grid: {
+          display: false,
+        },
+      },
+      y: {
+        grid: {
+          display: true,
+          color: "#949494",
+        },
       },
     },
   };
 
-  const labels = [
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-  ];
-
-  const data = {
-    labels,
+  const [data1, setData1] = useState({
+    labels: labelData1,
     datasets: [
       {
-        label: "Dataset 1",
-        data: labels.map(() =>
-          faker.datatype.number({ min: -1000, max: 1000 })
-        ),
+        label: "YAW",
+        data: xData1,
         fill: false,
         backgroundColor: "rgba(75,192,192,0.2)",
-        borderColor: "rgb(233, 137, 175)",
+        borderColor: "#ffde59",
+        lineTension: 0.4,
+        radius: 6,
       },
       {
-        label: "Dataset 2",
-        data: labels.map(() =>
-          faker.datatype.number({ min: -1000, max: 1000 })
-        ),
+        label: "ROLL",
+        data: yData1,
         fill: false,
         backgroundColor: "rgba(75,192,192,0.2)",
-        borderColor: "rgb(25, 252, 253)",
+        borderColor: "#5ce1e6",
+        lineTension: 0.4,
+        radius: 6,
+      },
+      {
+        label: "PITCH",
+        data: zData1,
+        fill: false,
+        backgroundColor: "rgba(75,192,192,0.2)",
+        borderColor: "#ffa7e3",
+        lineTension: 0.4,
+        radius: 6,
       },
     ],
+  });
+
+  const [data2, setData2] = useState({
+    labels: labelData1,
+    datasets: [
+      {
+        label: "Throttle",
+        data: xData2,
+        fill: false,
+        backgroundColor: "rgba(75,192,192,0.2)",
+        borderColor: "#ffde59",
+        lineTension: 0.4,
+        radius: 6,
+      },
+    ],
+  });
+
+  // Updating both Charts
+  const updateChart = () => {
+    removeData(xData1, setXData1, yaw);
+    removeData(yData1, setYData1, roll);
+    removeData(zData1, setZData1, pitch);
+
+    removeData(xData2, setXData2, throttle);
+
+    // Updating seconds
+    removeLabel(labelData1, setLabelData1);
+    removeLabel(labelData2, setLabelData2);
+
+    setData1((prev) => ({
+      labels: labelData1,
+      datasets: [
+        {
+          label: prev.datasets[0].label,
+          data: xData1,
+          fill: prev.datasets[0].fill,
+          backgroundColor: prev.datasets[0].backgroundColor,
+          borderColor: prev.datasets[0].borderColor,
+        },
+        {
+          label: prev.datasets[1].label,
+          data: yData1,
+          fill: prev.datasets[1].fill,
+          backgroundColor: prev.datasets[1].backgroundColor,
+          borderColor: prev.datasets[1].borderColor,
+        },
+        {
+          label: prev.datasets[2].label,
+          data: zData1,
+          fill: prev.datasets[2].fill,
+          backgroundColor: prev.datasets[2].backgroundColor,
+          borderColor: prev.datasets[2].borderColor,
+        },
+      ],
+    }));
+
+    setData2((prev) => ({
+      labels: labelData2,
+      datasets: [
+        {
+          label: prev.datasets[0].label,
+          data: xData2,
+          fill: prev.datasets[0].fill,
+          backgroundColor: prev.datasets[0].backgroundColor,
+          borderColor: prev.datasets[0].borderColor,
+        },
+      ],
+    }));
   };
 
+  // Adding instantaneous data to the chart
+  const addData = (axisData, setAxisData, val) => {
+    setAxisData((prev) => [...prev, val]);
+  };
+
+  // Removing old data from the chart
+  const removeData = (axisData, setAxisData, val) => {
+    if (axisData.length < 10) addData(axisData, setAxisData, val);
+    else
+      setAxisData(
+        (prev) => prev.filter((a, idx) => (idx !== 0 ? a : "")),
+        addData(axisData, setAxisData, val)
+      );
+  };
+
+  const addLabel = (labelData, setLabelData) => {
+    setLabelData((prev) => [...prev, labelData[labelData.length - 1] + 1]);
+  };
+
+  const removeLabel = (labelData, setLabelData) => {
+    if (labelData.length < 9) addLabel(labelData, setLabelData);
+    else
+      setLabelData(
+        (prev) => prev.filter((a, idx) => (idx !== 0 ? a : "")),
+        addLabel(labelData, setLabelData)
+      );
+  };
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      droneParameterAPI();
+      removeLabel(labelData1, setLabelData1);
+      removeLabel(labelData2, setLabelData2);
+      updateChart();
+      setTime(new Date());
+    }, 20);
+
+    return () => clearInterval(interval);
+  }, [xData1, yData1, zData1, xData2, labelData1, labelData2]);
+
+  // Event Listeners to controll using Keyboard
   useEffect(() => {
     document.body.addEventListener("keydown", function (event) {
       if (event.keyCode == 87) callYourAPI("increaseHeight");
@@ -134,15 +268,9 @@ function App() {
       else if (event.keyCode == 39) callYourAPI("right");
       else if (event.keyCode == 81) callYourAPI("takeOff");
       else if (event.keyCode == 188) callYourAPI("arm");
+      else if (event.keyCode == 190) callYourAPI("disArm");
+      else if (event.keyCode == 69) callYourAPI("land");
     });
-
-    const interval = setInterval(() => {
-      // console.log({ time });
-      droneParameterAPI();
-      setTime(new Date());
-    }, 1000);
-
-    return () => clearInterval(interval);
   }, []);
 
   return (
@@ -150,9 +278,7 @@ function App() {
       <div className="h-screen w-[50vw] mx-auto bg-[url('./Assets/Images/background.png')] bg-top bg-cover">
         <div className="grid grid-rows-1 grid-flow-col h-1/10 bg-[url('./Assets/Images/black_rectangle.png')] border-b-2 border-white">
           <div className="flex justify-evenly items-center">
-            <div className="w-[20%] font-bold text-2xl">
-              {/* DRONE NAME: */}
-            </div>
+            <div className="w-[20%] font-bold text-2xl"></div>
             <div className="w-[55%] flex justify-center relative top-[10%] w-[55vw] max-w-lg">
               <div>
                 <img src={trapezium} alt="trapezium background" />
@@ -161,9 +287,7 @@ function App() {
                 CONNECTED
               </div>
             </div>
-            <div className="w-[20%] font-bold text-2xl">
-              {/* CONNECTION STRENGTH:{" "} */}
-            </div>
+            <div className="w-[20%] font-bold text-2xl"></div>
           </div>
         </div>
         <div className="grid grid-rows-1 grid-flow-col h-7/10">
@@ -176,32 +300,28 @@ function App() {
                   onClick={(e) => callYourAPI(e.target.value)}
                   className="w-[23.4375%] h-[23.4375%] absolute left-[38.2%] top-[18.4%] rounded-full border border-white bg-red-500 opacity-0"
                 >
-                  {/* <div className="w-12 h-12 rounded-full border border-white bg-red-500"> */}
-                  w{/* </div> */}
+                  w
                 </button>
                 <button
                   value="leftYaw"
                   onClick={(e) => callYourAPI(e.target.value)}
                   className="w-[23.4375%] h-[23.4375%] absolute left-[58.4%] top-[38.3%] rounded-full border border-white bg-red-500 opacity-0"
                 >
-                  {/* <div className="w-12 h-12 rounded-full border border-white bg-red-500"> */}
-                  a{/* </div> */}
+                  a
                 </button>
                 <button
                   value="decreaseHeight"
                   onClick={(e) => callYourAPI(e.target.value)}
                   className="w-[23.4375%] h-[23.4375%] absolute left-[38.2%] top-[58.2%] rounded-full border border-white bg-red-500 opacity-0"
                 >
-                  {/* <div className="w-12 h-12 rounded-full border border-white bg-red-500"> */}
-                  s{/* </div> */}
+                  s
                 </button>
                 <button
                   value="rightYaw"
                   onClick={(e) => callYourAPI(e.target.value)}
                   className="w-[23.4375%] h-[23.4375%] absolute left-[18.2%] top-[38.3%] rounded-full border border-white bg-red-500 opacity-0"
                 >
-                  {/* <div className="w-12 h-12 rounded-full border border-white bg-red-500"> */}
-                  d{/* </div> */}
+                  d
                 </button>
               </div>
             </div>
@@ -247,32 +367,28 @@ function App() {
                   onClick={(e) => callYourAPI(e.target.value)}
                   className="w-[23.4375%] h-[23.4375%] absolute left-[38.2%] top-[18.4%] rounded-full border border-white bg-red-500 opacity-0"
                 >
-                  {/* <div className="w-12 h-12 rounded-full border border-white bg-red-500"> */}
-                  ⬆️{/* </div> */}
+                  ⬆️
                 </button>
                 <button
                   value="right"
                   onClick={(e) => callYourAPI(e.target.value)}
                   className="w-[23.4375%] h-[23.4375%] absolute left-[58.4%] top-[38.3%] rounded-full border border-white bg-red-500 opacity-0"
                 >
-                  {/* <div className="w-12 h-12 rounded-full border border-white bg-red-500"> */}
-                  ➡️{/* </div> */}
+                  ➡️
                 </button>
                 <button
                   value="backward"
                   onClick={(e) => callYourAPI(e.target.value)}
                   className="w-[23.4375%] h-[23.4375%] absolute left-[38.2%] top-[58.2%] rounded-full border border-white bg-red-500 opacity-0"
                 >
-                  {/* <div className="w-12 h-12 rounded-full border border-white bg-red-500"> */}
-                  ⬇️{/* </div> */}
+                  ⬇️
                 </button>
                 <button
                   value="left"
                   onClick={(e) => callYourAPI(e.target.value)}
                   className="w-[23.4375%] h-[23.4375%] absolute left-[18.2%] top-[38.3%] rounded-full border border-white bg-red-500 opacity-0"
                 >
-                  {/* <div className="w-12 h-12 rounded-full border border-white bg-red-500"> */}
-                  ⬅️{/* </div> */}
+                  ⬅️
                 </button>
               </div>
             </div>
@@ -280,32 +396,17 @@ function App() {
         </div>
         <div className="grid grid-flow-col grid-col-2 h-1/5">
           <div className="flex h-8/10">
-            {/* <div className="w-4/12 flex justify-around items-center relative">
-              <div className="h-4/5 relatve">
-                <button
-                  value="takeOff"
-                  onClick={(e) => callYourAPI(e.target.value)}
-                  className="absolute w-full h-full left-0"
-                ></button>
-                <img
-                  className="mx-auto h-full"
-                  src={takeOffButton}
-                  alt="takeOffButton"
-                />
-              </div>
-            </div> */}
-
             <div className="w-4/12 flex justify-around items-center relative">
               <div className="h-4/5 relative">
                 <button
-                  value="arm"
+                  value="takeOff"
                   onClick={(e) => callYourAPI(e.target.value)}
                   className="absolute w-full h-full left-0 "
                 ></button>
                 <img
                   className="mx-auto h-full"
                   src={takeOffButton}
-                  alt="armButton"
+                  alt="takeOffButton"
                 />
               </div>
             </div>
@@ -329,39 +430,52 @@ function App() {
         </div>
       </div>
       <div className="h-screen w-[50vw] mx-auto bg-[url('./Assets/Images/graph_bg.png')] bg-top bg-cover">
-        <div className="flex flex-col justify-around h-full items-center">
-          <div className="grid grid-rows-1 grid-flow-col h-[40vh] w-[90%] bg-[url('./Assets/Images/black_rectangle.png')] border-b-2 border-white">
-            <div className="flex justify-evenly items-center">
-              <div className="w-[45%] font-bold text-2xl h-full flex items-center">
-                {/* <div>CONTAINER FOR SCALES AND CHART NAME</div> */}
-                <div className="border border-white h-[95%] w-full">
-                  {/* DRONE NAME: */}
-                  {/* <Line data={data1} /> */}
+        <div className="flex flex-col justify-around h-[95vh] items-center">
+          {graphToggle ? (
+            <div className="grid grid-rows-1 grid-flow-col h-[44vh] w-[90%] ">
+              <div className="flex flex-col justify-center items-center w-[99%]">
+                <div className="w-[100%] h-[10%] pl-4 font-bold text-2xl h-full flex  items-center bg-[url('./Assets/Images/graph_name_bg.png')] bg-no-repeat">
+                  YAW
                 </div>
-              </div>
-              <div className="w-[45%] font-bold text-2xl h-full flex items-center">
-                {/* <div>CONTAINER FOR SCALES AND CHART NAME</div> */}
-                <div className="border border-white h-[95%] w-full">
-                  CONNECTION STRENGTH:
+                <div className="w-[100%] h-[10%] lg:h-[13%] pl-4 font-bold text-2xl flex  items-center bg-[url('./Assets/Images/graph_legend_bg.png')] bg-no-repeat bg-contain">
+                  <div className="border-2 border-white mr-4 rounded h-[50%] lg:h-[70%] items-center flex text-xs lg:text-xl px-1 lg:px-1.5 font-thin">
+                    Unit: degree(°)
+                  </div>
+                  <div className="border-2 border-[#ffde59] mr-4 rounded h-[50%] lg:h-[70%] items-center flex text-xs lg:text-xl px-1 lg:px-1.5 font-thin">
+                    YAW: {yaw}
+                  </div>
+                  <div className="border-2 border-[#5ce1e6] mr-4 rounded h-[50%] lg:h-[70%] items-center flex text-xs lg:text-xl px-1 lg:px-1.5 font-thin">
+                    ROLL: {roll}
+                  </div>
+                  <div className="border-2 border-[#ffa7e3] mr-4 rounded h-[50%] lg:h-[70%] items-center flex text-xs lg:text-xl px-1 lg:px-1.5 font-thin">
+                    PITCH: {pitch}
+                  </div>
+                </div>
+                <div className="w-[100%] h-[77%] font-bold text-2xl h-full flex items-center justify-center bg-[#545454] border-2 border-white rounded-tr-xl rounded-b-xl">
+                  <Line data={data1} options={options} />
                 </div>
               </div>
             </div>
-          </div>
-          <div className="grid grid-rows-1 grid-flow-col h-[40vh] w-[90%] bg-[url('./Assets/Images/black_rectangle.png')] border-b-2 border-white">
-            <div className="flex justify-evenly items-center">
-              <div className="w-[20%] font-bold text-2xl">DRONE NAME:</div>
-              <div className="w-[20%] font-bold text-2xl">
-                CONNECTION STRENGTH:{" "}
+          ) : null}
+          {graphToggle ? (
+            <div className="grid grid-rows-1 grid-flow-col h-[44vh] w-[90%]">
+              <div className="flex flex-col justify-evenly items-center w-[99%]">
+                <div className="w-[100%] h-[10%] pl-4 font-bold text-2xl h-full flex  items-center bg-[url('./Assets/Images/graph_name_bg.png')] bg-no-repeat">
+                  THROTTLE
+                </div>
+                <div className="w-[100%] h-[13%] pl-4 font-bold text-2xl h-full flex  items-center bg-[url('./Assets/Images/graph_legend_bg.png')] bg-no-repeat bg-contain">
+                  <div className="border-2 border-[#ffde59] mr-4 rounded h-[70%] items-center flex text-xl px-1.5 font-thin">
+                    THROTTLE: {throttle}
+                  </div>
+                </div>
+                <div className="w-[100%] h-[77%] font-bold text-2xl h-full flex items-center justify-center bg-[#545454] border-2 border-white rounded-tr-xl rounded-b-xl">
+                  <Line data={data2} options={options} />
+                </div>
               </div>
             </div>
-          </div>
+          ) : null}
         </div>
       </div>
-
-      {/* <div>
-        <Line options={options} data={data} />
-        <Line data={data} />
-      </div> */}
     </div>
   );
 }
