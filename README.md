@@ -1,11 +1,5 @@
-# Create React App with Electron Forge Demo
+Hello Folks
 
-**Installation:**
-
-```sh
-npm i && npm run dev
-```
-
-**Tutorial:**
-
-[Read the full tutorial on dev.to here](https://dev.to/mandiwise/electron-apps-made-easy-with-create-react-app-and-electron-forge-560e) 👩‍💻
+Here is a my app for Inter IIT 11.0 (Drona Aviation) that connects with drones and you can almost do anything that can be done using terminal.
+* Control yaw, throttle, pitch etc
+* Live graph of parameter is shown
